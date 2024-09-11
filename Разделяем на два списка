@@ -1,0 +1,23 @@
+def is_prime(n):
+    if n <= 1:
+        return False
+    for i in range(2,int(n**0.5) + 1):
+        if n % i == 0:
+            return False
+    return True
+
+def sort_numbers (numbers):
+    primes = []
+    not_primes = []
+
+    for number in numbers:
+       if is_prime(number):
+           primes.append(number)
+       elif number > 1:
+           not_primes.append(number)
+    return primes, not_primes
+
+numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+primes, not_primes = sort_numbers(numbers)
+print('Простые числа:', primes)
+print('Составные числа:', not_primes)
