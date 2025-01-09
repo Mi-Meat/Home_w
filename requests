@@ -1,14 +1,10 @@
 import requests
 
-# URL сайта
 url = 'https://requests.readthedocs.io/en/latest/index.html#'
 
-# Отправляем GET-запрос
 response = requests.get(url)
 
-# Проверяем статус-код ответа
 if response.status_code == 200:
-    # Выводим первые 500 символов содержимого страницы
     print(response.text[:500])  # Выводим только первые 500 символов для краткости
 else:
     print(f"Ошибка: {response.status_code}")
