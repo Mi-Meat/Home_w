@@ -8,3 +8,13 @@ if response.status_code == 200:
     print(response.text[:500])  # Выводим только первые 500 символов для краткости
 else:
     print(f"Ошибка: {response.status_code}")
+
+
+data = {'key': 'value'}
+response = requests.post('https://requests.readthedocs.io/en/latest/index.html#', json=data)
+print(response.status_code)
+
+
+headers = {'Authorization': 'Bearer your_token'}
+response = requests.get('https://requests.readthedocs.io/en/latest/index.html#', headers=headers)
+print(response.text)
