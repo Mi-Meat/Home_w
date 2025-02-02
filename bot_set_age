@@ -9,7 +9,7 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
 import asyncio
 
-API_TOKEN = '7851373275:AAEZ6evhL4EFQ7xo5VH6OCxNo_UdiJ80wD4'
+API_TOKEN = '__'
 
 logging.basicConfig(level=logging.INFO)
 
