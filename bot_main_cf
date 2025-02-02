@@ -1,0 +1,16 @@
+import asyncio
+from aiogram import Bot, Dispatcher
+from aiogram.fsm.storage.memory import MemoryStorage
+from botsss.crud_functions import populate_db
+from crud_functions import initiate_db
+from bot import dp
+
+API_TOKEN = '__'
+
+async def main():
+    initiate_db()
+    populate_db()
+    await dp.start_polling(Bot, skip_updates=True)
+
+if __name__ == '__main__':
+    asyncio.run(main())
