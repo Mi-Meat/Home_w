@@ -1,0 +1,83 @@
+import logging
+from aiogram import Bot, Dispatcher, types
+from aiogram.filters import Command
+from aiogram import F
+from aiogram import Router
+from aiogram.types import Message
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.storage.memory import MemoryStorage
+import asyncio
+
+API_TOKEN = '7851373275:AAEZ6evhL4EFQ7xo5VH6OCxNo_UdiJ80wD4'
+
+logging.basicConfig(level=logging.INFO)
+
+bot = Bot(token=API_TOKEN)
+storage = MemoryStorage()
+dp = Dispatcher(storage=storage)
+router = Router()
+
+
+class UserState(StatesGroup):
+    age = State()
+    growth = State()
+    weight = State()
+
+
+@router.message(Command("start"))
+async def start(message: Message):
+    response_text = 'Привет! Я бот, помогающий твоему здоровью.'
+    await message.answer(response_text)
+
+
+@router.message(F.text)
+async def all_messages(message: Message):
+    response_text = 'Введите команду /start, чтобы начать общение.'
+    await message.answer(response_text)
+
+
+@router.message(Command("calories"))
+async def set_age(message: Message):
+    await UserState.age.set()
+    await message.answer('Введите свой возраст:')
+
+
+@router.message(UserState.age)
+async def set_growth(message: Message, state: FSMContext):
+    await state.update_data(age=message.text)
+    await UserState.growth.set()
+    await message.answer('Введите свой рост:')
+
+
+@router.message(UserState.growth)
+async def set_weight(message: Message, state: FSMContext):
+    await state.update_data(growth=message.text)
+    await UserState.weight.set()
+    await message.answer('Введите свой вес:')
+
+
+@router.message(UserState.weight)
+async def send_calories(message: Message, state: FSMContext):
+    await state.update_data(weight=message.text)
+    data = await state.get_data()
+
+    age = int(data['age'])
+    growth = int(data['growth'])
+    weight = int(data['weight'])
+
+    calories = 10 * weight + 6.25 * growth - 5 * age + 5
+
+    await message.answer(f'Ваша норма калорий: {calories:.2f} ккал.')
+    await state.finish()
+
+
+dp.include_router(router)
+
+
+async def main():
+    await dp.start_polling(bot, skip_updates=True)
+
+
+if __name__ == '__main__':
+    asyncio.run(main())
