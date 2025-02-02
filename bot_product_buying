@@ -1,0 +1,136 @@
+import logging
+from aiogram import Bot, Dispatcher, types
+from aiogram.filters import Command
+from aiogram import F
+from aiogram import Router
+from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.fsm.storage.memory import MemoryStorage
+import asyncio
+
+API_TOKEN = '__'
+
+logging.basicConfig(level=logging.INFO)
+
+bot = Bot(token=API_TOKEN)
+storage = MemoryStorage()
+dp = Dispatcher(storage=storage)
+router = Router()
+
+
+class UserState(StatesGroup):
+    age = State()
+    growth = State()
+    weight = State()
+
+
+keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text='Рассчитать'), KeyboardButton(text='Информация')],
+        [KeyboardButton(text='Купить')]
+    ],
+    resize_keyboard=True
+)
+
+
+def get_inline_keyboard():
+    keyboard = InlineKeyboardMarkup()
+    button1 = InlineKeyboardButton(text='Product1', callback_data='product_buying:1')
+    button2 = InlineKeyboardButton(text='Product2', callback_data='product_buying:2')
+    button3 = InlineKeyboardButton(text='Product3', callback_data='product_buying:3')
+    button4 = InlineKeyboardButton(text='Product4', callback_data='product_buying:4')
+    keyboard.add(button1, button2, button3, button4)
+    return keyboard
+
+
+@router.message(Command("start"))
+async def start(message: Message):
+    response_text = 'Привет! Я бот, помогающий твоему здоровью.'
+    await message.answer(response_text, reply_markup=keyboard)
+
+
+@router.message(F.text == 'Рассчитать')
+async def main_menu(message: Message):
+    await message.answer("Выберите опцию:", reply_markup=get_inline_keyboard())
+
+
+@router.message(F.text == 'Информация')
+async def info(message: Message):
+    await message.answer('Это бот для расчета нормы калорий. Нажмите "Рассчитать", чтобы начать.')
+
+
+@router.message(F.text == 'Купить')
+async def get_buying_list(message: Message):
+    products = [
+        (1, "Product1", "Описание 1", 100,"https://re-body.ru/image/cache/catalog/temp/0/ge-catalog-temp-0-ponents-com_jshopping-files-img_products-full_94-1200x630.jpg"),
+        (2, "Product2", "Описание 2", 200,"https://avatars.mds.yandex.net/i?id=7afd8731120b4a084f2f850b558bbeb9_l-8311862-images-thumbs&n=13"),
+        (3, "Product3", "Описание 3", 300,"https://avatars.yandex.net/get-music-content/5502420/536cba70.a.24445177-1/m1000x1000?webp=false"),
+        (4, "Product4", "Описание 4", 400,"https://cstor.nn2.ru/forum/data/forum/images/2016-04/145005700-vitamins_-1-.jpg")
+    ]
+
+    for product in products:
+        product_id, name, description, price, image_url = product
+        await message.answer(f'Название: {name} | Описание: {description} | Цена: {price} руб.')
+        await message.answer_photo(photo=image_url)
+
+    await message.answer("Выберите продукт для покупки:", reply_markup=get_inline_keyboard())
+
+
+@router.callback_query(F.data.startswith('product_buying'))
+async def send_confirm_message(call: types.CallbackQuery):
+    product_id = call.data.split(':')[1]
+    await call.answer()
+    await call.message.answer("Вы успешно приобрели продукт!")
+
+
+@router.callback_query(F.data == 'formulas')
+async def get_formulas(call: types.CallbackQuery):
+    await call.answer()
+    await call.message.answer("Формула Миффлина-Сан Жеора:\n"
+                              "Для мужчин: BMR = 10 * вес(кг) + 6.25 * рост(см) - 5 * возраст(г) + 5\n"
+                              "Для женщин: BMR = 10 * вес(кг) + 6.25 * рост(см) - 5 * возраст(г) - 161")
+
+
+@router.callback_query(F.data == 'calories')
+async def set_age(call: types.CallbackQuery):
+    await call.answer()
+    await UserState.age.set()
+    await call.message.answer('Введите свой возраст:')
+
+
+@router.message(UserState.age)
+async def set_growth(message: Message, state: FSMContext):
+    await state.update_data(age=message.text)
+    await UserState.growth.set()
+    await message.answer('Введите свой рост:')
+
+
+@router.message(UserState.growth)
+async def set_weight(message: Message, state: FSMContext):
+    await state.update_data(growth=message.text)
+    await UserState.weight.set()
+    await message.answer('Введите свой вес:')
+
+
+@router.message(UserState.weight)
+async def send_calories(message: Message, state: FSMContext):
+    await state.update_data(weight=message.text)
+    data = await state.get_data()
+
+    age = int(data['age'])
+    growth = int(data['growth'])
+    weight = int(data['weight'])
+
+    calories = 10 * weight + 6.25 * growth - 5 * age + 5
+
+    await message.answer(f'Ваша норма калорий: {calories:.2f} ккал.')
+    await state.finish()
+
+dp.include_router(router)
+
+async def main():
+    await dp.start_polling(bot, skip_updates=True)
+
+if __name__ == '__main__':
+    asyncio.run(main())
