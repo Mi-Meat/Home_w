@@ -1,0 +1,96 @@
+from aiogram import Bot, Dispatcher, types
+from aiogram.filters import Command
+from aiogram import F
+from aiogram import Router
+from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.fsm.storage.memory import MemoryStorage
+import asyncio
+import logging
+import crud_functions
+
+API_TOKEN = '__'
+
+logging.basicConfig(level=logging.INFO)
+
+bot = Bot(token=API_TOKEN)
+storage = MemoryStorage()
+dp = Dispatcher(storage=storage)
+router = Router()
+
+
+class RegistrationState(StatesGroup):
+    username = State()
+    email = State()
+    age = State()
+
+
+class UserState(StatesGroup):
+    age = State()
+    growth = State()
+    weight = State()
+
+
+keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text='Рассчитать'), KeyboardButton(text='Информация')],
+        [KeyboardButton(text='Купить'), KeyboardButton(text='Регистрация')]
+    ],
+    resize_keyboard=True
+)
+
+
+@router.message(Command("start"))
+async def start(message: Message):
+    response_text = 'Привет! Я бот, помогающий твоему здоровью.'
+    await message.answer(response_text, reply_markup=keyboard)
+
+
+@router.message(F.text == 'Регистрация')
+async def sing_up(message: Message):
+    await message.answer("Введите имя пользователя (только латинский алфавит):")
+    await RegistrationState.username.set()
+
+
+@router.message(RegistrationState.username)
+async def set_username(message: Message, state: FSMContext):
+    username = message.text
+    if crud_functions.is_included(username):
+        await message.answer("Пользователь существует, введите другое имя.")
+    else:
+        await state.update_data(username=username)
+        await message.answer("Введите свой email:")
+        await RegistrationState.email.set()
+
+
+@router.message(RegistrationState.email)
+async def set_email(message: Message, state: FSMContext):
+    email = message.text
+    await state.update_data(email=email)
+    await message.answer("Введите свой возраст:")
+    await RegistrationState.age.set()
+
+
+@router.message(RegistrationState.age)
+async def set_age(message: Message, state: FSMContext):
+    age = message.text
+    user_data = await state.get_data()
+    username = user_data['username']
+    email = user_data['email']
+
+    crud_functions.add_user(username, email, age)
+    await message.answer("Регистрация завершена! Добро пожаловать!")
+    await state.finish()
+
+
+dp.include_router(router)
+
+
+async def main():
+    crud_functions.initiate_db()
+    await dp.start_polling(bot, skip_updates=True)
+
+
+if __name__ == '__main__':
+    asyncio.run(main())
